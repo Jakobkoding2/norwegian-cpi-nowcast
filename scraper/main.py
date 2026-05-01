@@ -47,15 +47,14 @@ async def run() -> None:
     missing = [p for p in products if p["ean"] not in covered_eans]
     log.info("kassal_coverage", covered=len(covered_eans), missing=len(missing))
 
-    # Fallback 1: Oda
+    # Fallback 1: Oda (name-based search, accepts same {ean, name} dicts as Kassal)
     oda_rows: list[dict] = []
     if missing:
-        missing_eans = [p["ean"] for p in missing]
-        oda_rows = await oda.fetch_prices_batch(missing_eans)
+        oda_rows = await oda.fetch_prices_batch(missing)
         covered_oda = {r["ean"] for r in oda_rows}
         missing = [p for p in missing if p["ean"] not in covered_oda]
 
-    # Fallback 2: Meny
+    # Fallback 2: Meny (disabled — NGData API endpoint no longer responds)
     meny_rows: list[dict] = []
     if missing:
         meny_rows = await meny.fetch_prices_batch([p["ean"] for p in missing])

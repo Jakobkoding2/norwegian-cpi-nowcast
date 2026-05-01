@@ -53,7 +53,7 @@ class NowcastResponse(BaseModel):
     point_estimate: float
     ci_lower_95: float
     ci_upper_95: float
-    model_version: str | None
+    xgb_version: str | None = None
 
 
 class SSBPoint(BaseModel):
@@ -92,7 +92,8 @@ async def get_daily_index(
 @app.get("/nowcast/latest", response_model=NowcastResponse)
 async def get_latest_nowcast():
     row = await db().fetchrow(
-        "SELECT * FROM nowcast ORDER BY run_date DESC LIMIT 1"
+        "SELECT run_date, target_month, point_estimate, ci_lower_95, ci_upper_95,"
+        " model_version AS xgb_version FROM nowcast ORDER BY run_date DESC LIMIT 1"
     )
     if not row:
         raise HTTPException(404, "No nowcast available yet")

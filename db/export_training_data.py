@@ -153,7 +153,7 @@ async def export(output: str, from_month: str) -> None:
     result.to_csv(output, index=False)
     log.info("training_data_exported", rows=len(result), path=output,
              with_internal=int(result["internal_mom_pct"].notna().sum()))
-    print(f"\nExported {len(result)} rows → {output}")
+    print(f"\nExported {len(result)} rows -> {output}")
     print(f"  Rows with internal index data : {result['internal_mom_pct'].notna().sum()}")
     print(f"  Rows with EUR/NOK data        : {result['eur_nok_mom_pct'].notna().sum()}")
     print(f"\nLast 6 rows:")

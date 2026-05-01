@@ -51,37 +51,7 @@ async def _post_search(session: AsyncSession, ean: str) -> list[dict]:
 
 
 async def fetch_prices_batch(eans: list[str]) -> list[dict]:
-    today = date.today()
-    results: list[dict] = []
-    sem = asyncio.Semaphore(settings.max_concurrency)
-
-    async def fetch_one(session: AsyncSession, ean: str) -> None:
-        async with sem:
-            try:
-                hits = await _post_search(session, ean)
-                if not hits:
-                    return
-                src = hits[0].get("_source", {})
-                price_info = src.get("priceV2", src.get("price", {}))
-                raw_price = price_info.get("current") or price_info.get("price")
-                if raw_price is None:
-                    return
-                promo = price_info.get("promotion", {})
-                results.append(
-                    {
-                        "ean": ean,
-                        "price_date": today,
-                        "price": float(raw_price),
-                        "is_promo": bool(promo),
-                        "promo_price": float(promo["price"]) if promo and "price" in promo else None,
-                        "source": "meny_api",
-                    }
-                )
-            except Exception:
-                log.exception("meny_fetch_failed", ean=ean)
-
-    async with AsyncSession(impersonate=_IMPERSONATE) as session:
-        await asyncio.gather(*[fetch_one(session, ean) for ean in eans])
-
-    log.info("meny_batch_done", fetched=len(results), requested=len(eans))
-    return results
+    # The NGData platform-rest-prod.ngdata.no API no longer responds to this
+    # route — all requests return 404. Disabled until a working endpoint is found.
+    log.warning("meny_disabled", reason="NGData API endpoint deprecated", eans=len(eans))
+    return []

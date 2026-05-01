@@ -72,7 +72,7 @@ def main() -> None:
 
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     model.save_model(args.output)
-    print(f"Model saved → {args.output}")
+    print(f"Model saved -> {args.output}")
 
 
 if __name__ == "__main__":

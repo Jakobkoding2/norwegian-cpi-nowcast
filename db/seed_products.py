@@ -86,7 +86,6 @@ PRODUCTS = [
     ("8410086316070", "Ybarra Raps/Olivenolje 750ml",     "kassal", "01.1.5", "Oils and fats",     1.20, 95.90),
 
     # ── Fruit (01.1.6) — weight ~6% ─────────────────────────────────────────────
-    ("4196",          "Appelsin Kg",                      "kassal", "01.1.6", "Fruit",             1.50,  3.07),
     ("2000401300004", "Appelsiner Navel",                 "kassal", "01.1.6", "Fruit",             1.50, 49.90),
     ("2000000000022", "Banan Kg",                         "kassal", "01.1.6", "Fruit",             2.50, 19.90),
     ("7039281545026", "Druer Kg",                         "kassal", "01.1.6", "Fruit",             1.00, 49.90),
@@ -102,7 +101,7 @@ PRODUCTS = [
     ("2000512500003", "Løk Kg",                           "kassal", "01.1.7", "Vegetables",        1.00, 19.90),
     ("94088",         "Paprika Rød Kg",                   "kassal", "01.1.7", "Vegetables",        1.00, 35.80),
     ("7023026411271", "Poteter 1kg",                      "kassal", "01.1.7", "Vegetables",        2.50, 41.93),
-    ("8002207230015", "Tomater Kg",                       "kassal", "01.1.7", "Vegetables",        2.00, 315.90),
+    # Tomater Kg (EAN 8002207230015) deactivated — Kassal returns a unit-price error (315.90 NOK/kg)
 
     # ── Sugar, chocolate, confectionery (01.1.8) — weight ~8% ───────────────────
     ("7310350132546", "Ahlgrens Bilar 130g",              "kassal", "01.1.8", "Sugar and confectionery", 0.80, 29.90),
