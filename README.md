@@ -6,7 +6,7 @@
 ![Python](https://img.shields.io/badge/python-3.11+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-> **[🔴 Live Dashboard →](https://your-app.streamlit.app)**  *(deploy guide below)*
+> **[🔴 Live Dashboard →](https://norwegian-c-deugpypcrvpupxaxgybb3l.streamlit.app)**  *(deploy guide below)*
 
 Real-time Norwegian food CPI tracker and SSB monthly print predictor. Scrapes daily grocery prices from **Kassal.app** and **Oda.com**, computes a **Laspeyres price index** weighted by SSB Table 14700 basket weights, and uses an **XGBoost model** to predict Statistics Norway's monthly food CPI print — up to **10 days before it's published**.
 
