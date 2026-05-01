@@ -174,12 +174,33 @@ docker compose up
 The frontend reads its `API_URL` from Streamlit secrets, so deployment is a single click once your API is hosted.
 
 ### Step 1 — Host the API
-Deploy `api/` to [Railway](https://railway.app) (free tier):
+
+Pick any of these free options — all work the same way:
+
+#### Option A — Render *(recommended, no credit card)*
+1. Go to **[render.com](https://render.com)** → New → **Web Service**
+2. Connect your GitHub repo → select `norwegian-cpi-nowcast`
+3. Set:
+   - **Root directory**: *(leave blank — repo root)*
+   - **Runtime**: Python 3
+   - **Build command**: `pip install .`
+   - **Start command**: `uvicorn api.main:app --host 0.0.0.0 --port $PORT`
+4. Add environment variable: `DATABASE_URL=<your neon connection string>`
+5. Click **Create Web Service** — Render gives you a URL like `https://xxxx.onrender.com`
+
+> **Note:** Render free tier spins down after 15 min of inactivity. First request after sleep takes ~30 s. Upgrade to the $7/mo Starter plan to keep it always-on.
+
+#### Option B — Railway
+1. Go to **[railway.app](https://railway.app)** → New Project → Deploy from GitHub repo
+2. Set root directory: `api/`
+3. Add env var: `DATABASE_URL=<your neon connection string>`
+
+#### Option C — Fly.io *(always-on free tier, requires Docker)*
 ```bash
-# In the Railway dashboard: New Project → Deploy from GitHub repo
-# Set root directory: api/
-# Add env var: DATABASE_URL=<your neon connection string>
-# Railway will auto-detect uvicorn and deploy
+cd api
+fly launch          # follow prompts, choose free shared-cpu-1x
+fly secrets set DATABASE_URL="<your neon connection string>"
+fly deploy
 ```
 
 ### Step 2 — Deploy the dashboard
@@ -188,7 +209,7 @@ Deploy `api/` to [Railway](https://railway.app) (free tier):
 3. Branch: `master` · Main file path: `frontend/app.py`
 4. Click **Advanced settings → Secrets** and paste:
    ```toml
-   API_URL = "https://your-railway-api-url.up.railway.app"
+   API_URL = "https://xxxx.onrender.com"   # replace with your API host URL
    ```
 5. Click **Deploy** — done in ~2 minutes
 
