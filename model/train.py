@@ -22,6 +22,8 @@ FEATURE_COLS = [
     "eur_nok_mom_pct",
     "promo_intensity",
     "volatility_mean",
+    "is_feb_window",
+    "is_jul_window",
 ]
 
 
@@ -30,6 +32,11 @@ def load_training_data(csv_path: str) -> tuple[pd.DataFrame, pd.Series]:
     df = pd.read_csv(csv_path, parse_dates=["target_month"])
     df = df.dropna(subset=["ssb_mom_pct"])
     df = df.sort_values("target_month")
+    # Derive seasonal flags from target_month if not already present
+    if "is_feb_window" not in df.columns:
+        df["is_feb_window"] = df["target_month"].dt.month.isin([1, 2]).astype(int)
+    if "is_jul_window" not in df.columns:
+        df["is_jul_window"] = df["target_month"].dt.month.isin([6, 7]).astype(int)
     X = df[FEATURE_COLS].fillna(df[FEATURE_COLS].median())
     y = df["ssb_mom_pct"]
     return X, y
@@ -38,10 +45,12 @@ def load_training_data(csv_path: str) -> tuple[pd.DataFrame, pd.Series]:
 def train(X: pd.DataFrame, y: pd.Series) -> xgb.XGBRegressor:
     model = xgb.XGBRegressor(
         n_estimators=200,
-        max_depth=3,
+        max_depth=2,          # shallow trees prevent overfitting on ~50 monthly obs
         learning_rate=0.05,
         subsample=0.8,
         colsample_bytree=0.8,
+        reg_lambda=2.0,       # L2 weight regularization (default 1.0)
+        min_child_weight=3,   # require ≥3 samples per leaf
         objective="reg:squarederror",
         random_state=42,
     )

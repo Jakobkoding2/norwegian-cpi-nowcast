@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS daily_index (
     mom_pct         DECIMAL(8,4),               -- month-over-month % change
     raw_volatility  DECIMAL(10,6),              -- std-dev of underlying price relatives
     n_products      INTEGER,                    -- number of active products in basket
+    is_feb_window   BOOLEAN         DEFAULT FALSE,  -- Jan–Feb supplier hike season
+    is_jul_window   BOOLEAN         DEFAULT FALSE,  -- Jun–Jul mid-year hike season
     PRIMARY KEY (price_date, coicop_code)
 );
 
@@ -63,3 +65,7 @@ CREATE TABLE IF NOT EXISTS ssb_official (
 -- Useful indexes
 CREATE INDEX IF NOT EXISTS idx_raw_prices_ean_date ON raw_prices (ean, price_date DESC);
 CREATE INDEX IF NOT EXISTS idx_daily_index_date ON daily_index (price_date DESC);
+
+-- Migrations: add seasonal window columns to existing deployments
+ALTER TABLE daily_index ADD COLUMN IF NOT EXISTS is_feb_window BOOLEAN DEFAULT FALSE;
+ALTER TABLE daily_index ADD COLUMN IF NOT EXISTS is_jul_window  BOOLEAN DEFAULT FALSE;

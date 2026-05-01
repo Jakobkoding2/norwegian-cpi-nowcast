@@ -72,10 +72,13 @@ def build_feature_row(
 
     volatility_mean = month_data["raw_volatility"].mean() if not month_data.empty else None
 
+    month = target_month.month
     return {
         "target_month": target_month,
         "internal_mom_pct": internal_mom,
         "eur_nok_mom_pct": eurnok_mom,
         "promo_intensity": promo_intensity,
         "volatility_mean": volatility_mean,
+        "is_feb_window": int(month in (1, 2)),
+        "is_jul_window": int(month in (6, 7)),
     }
