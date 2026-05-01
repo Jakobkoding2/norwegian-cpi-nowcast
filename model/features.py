@@ -30,7 +30,7 @@ async def fetch_eurnok(start: str, end: str) -> float | None:
             r.raise_for_status()
             data = r.json()
             obs = data["data"]["dataSets"][0]["series"]["0:0:0:0"]["observations"]
-            values = [v[0] for v in obs.values() if v[0] is not None]
+            values = [float(v[0]) for v in obs.values() if v[0] is not None]
             if len(values) < 2:
                 return None
             return (values[-1] - values[0]) / values[0] * 100
@@ -63,8 +63,8 @@ def build_feature_row(
     # Promo intensity
     if not raw_prices.empty:
         month_prices = raw_prices[
-            (raw_prices["price_date"] >= month_start)
-            & (raw_prices["price_date"] <= cutoff)
+            (raw_prices["price_date"] >= pd.Timestamp(month_start))
+            & (raw_prices["price_date"] <= pd.Timestamp(cutoff))
         ]
         promo_intensity = month_prices["is_promo"].mean() if not month_prices.empty else 0.0
     else:

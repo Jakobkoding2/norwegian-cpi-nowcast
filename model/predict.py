@@ -115,7 +115,7 @@ async def run(target_month: date | None = None) -> None:
         ci_lo,
         ci_hi,
         MODEL_PATH.stem,
-        json.dumps(feat, default=str),
+        json.dumps({k: (None if isinstance(v, float) and v != v else v) for k, v in feat.items()}, default=str),
     )
     await pool.close()
 
