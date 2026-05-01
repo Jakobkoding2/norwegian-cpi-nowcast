@@ -1,0 +1,33 @@
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cpi_nowcast
+      POSTGRES_USER: ${POSTGRES_USER:-cpi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+
+  scraper:
+    build: ./scraper
+    depends_on: [db]
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      KASSAL_API_KEY: ${KASSAL_API_KEY}
+    # Runs on-demand or via GitHub Actions; override CMD for cron locally.
+
+  api:
+    build: ./api
+    depends_on: [db]
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    restart: unless-stopped
+
+volumes:
+  pgdata:

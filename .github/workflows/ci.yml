@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dev dependencies
+        run: pip install ".[dev]"
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Type check (mypy)
+        run: mypy scraper/ indexer/ model/ api/ --ignore-missing-imports
+
+      - name: Tests
+        run: pytest tests/ -v --cov=scraper --cov=indexer --cov=model
+        env:
+          DATABASE_URL: "postgresql://test:test@localhost:5432/test"
+          KASSAL_API_KEY: "dummy"
