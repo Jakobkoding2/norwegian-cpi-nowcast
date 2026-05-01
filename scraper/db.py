@@ -22,10 +22,24 @@ async def close_pool() -> None:
         _pool = None
 
 
+async def fetch_active_products() -> list[dict]:
+    pool = await get_pool()
+    rows = await pool.fetch("SELECT ean, name FROM products WHERE active = TRUE")
+    return [dict(r) for r in rows]
+
+
 async def fetch_active_eans() -> list[str]:
     pool = await get_pool()
     rows = await pool.fetch("SELECT ean FROM products WHERE active = TRUE")
     return [r["ean"] for r in rows]
+
+
+async def update_ean(old_ean: str, new_ean: str, base_price: float) -> None:
+    pool = await get_pool()
+    await pool.execute(
+        "UPDATE products SET ean = $1, base_price_p0 = $2 WHERE ean = $3",
+        new_ean, base_price, old_ean,
+    )
 
 
 async def upsert_prices(records: list[dict]) -> int:
