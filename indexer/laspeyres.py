@@ -43,6 +43,16 @@ async def compute_and_store(pool: asyncpg.Pool, price_date: "date") -> None:  # 
         return
 
     df = pd.DataFrame([dict(r) for r in rows])
+    for col in ("weight", "base_price", "raw_price"):
+        if col in df.columns:
+            df[col] = df[col].apply(lambda v: float(v) if v is not None else None)
+
+    # Sanity cap: drop prices > 5× the median per COICOP group (catches Kassal unit-price errors)
+    group_medians = df.groupby("coicop_code")["raw_price"].transform("median")
+    df = df[df["raw_price"] <= group_medians * 5].copy()
+    if df.empty:
+        log.warning("all_prices_filtered_as_outliers", date=price_date)
+        return
 
     # Apply promo smoothing inline (need historical window — fetch last 7 days)
     hist_query = """
@@ -55,6 +65,10 @@ async def compute_and_store(pool: asyncpg.Pool, price_date: "date") -> None:  # 
     """
     hist_rows = await pool.fetch(hist_query, price_date)
     hist_df = pd.DataFrame([dict(r) for r in hist_rows])
+    # asyncpg returns DECIMAL columns as decimal.Decimal — cast to float for Pandas
+    for col in ("price", "promo_price"):
+        if col in hist_df.columns:
+            hist_df[col] = hist_df[col].apply(lambda v: float(v) if v is not None else None)
 
     from indexer.promo_filter import clean  # noqa: PLC0415
     hist_clean = clean(hist_df)

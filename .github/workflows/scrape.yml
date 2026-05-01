@@ -2,7 +2,8 @@ name: Daily Price Scraper
 
 on:
   schedule:
-    - cron: "0 2 * * *"   # 02:00 UTC daily (03:00/04:00 Norwegian time)
+    - cron: "0 2 * * *"   # 02:00 UTC daily — scrape + index
+    - cron: "0 3 1 * *"   # 03:00 UTC on the 1st — also triggers nowcast
   workflow_dispatch:        # Manual trigger for testing
 
 jobs:
@@ -36,8 +37,8 @@ jobs:
   nowcast:
     runs-on: ubuntu-latest
     needs: scrape-and-index
-    # Only run on the 1st of each month
-    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.event.schedule, '0 2 1 ') }}
+    # Only run on the 1st (triggered by the 03:00 cron) or manual dispatch
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '0 3 1 * *' }}
     steps:
       - uses: actions/checkout@v4
 
