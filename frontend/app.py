@@ -41,7 +41,7 @@ with col_btn:
 
 @st.cache_data(ttl=1800)
 def fetch_daily_index(from_date: str) -> pd.DataFrame:
-    r = requests.get(f"{API_URL}/index", params={"from_date": from_date}, timeout=10)
+    r = requests.get(f"{API_URL}/index", params={"from_date": from_date}, timeout=45)
     r.raise_for_status()
     df = pd.DataFrame(r.json())
     if not df.empty:
@@ -51,7 +51,7 @@ def fetch_daily_index(from_date: str) -> pd.DataFrame:
 
 @st.cache_data(ttl=1800)
 def fetch_ssb() -> pd.DataFrame:
-    r = requests.get(f"{API_URL}/ssb", timeout=10)
+    r = requests.get(f"{API_URL}/ssb", timeout=45)
     r.raise_for_status()
     df = pd.DataFrame(r.json())
     if not df.empty:
@@ -61,7 +61,7 @@ def fetch_ssb() -> pd.DataFrame:
 
 @st.cache_data(ttl=1800)
 def fetch_nowcast() -> dict | None:
-    r = requests.get(f"{API_URL}/nowcast/latest", timeout=10)
+    r = requests.get(f"{API_URL}/nowcast/latest", timeout=45)
     if r.status_code == 404:
         return None
     r.raise_for_status()
@@ -70,7 +70,7 @@ def fetch_nowcast() -> dict | None:
 
 @st.cache_data(ttl=1800)
 def fetch_breakdown(price_date: str) -> pd.DataFrame:
-    r = requests.get(f"{API_URL}/breakdown/{price_date}", timeout=10)
+    r = requests.get(f"{API_URL}/breakdown/{price_date}", timeout=45)
     if r.status_code == 404:
         return pd.DataFrame()
     r.raise_for_status()
@@ -89,7 +89,11 @@ with st.spinner("Loading data…"):
         breakdown_date = str(date.today())
         breakdown_df = fetch_breakdown(breakdown_date)
     except Exception as e:
-        st.error(f"API unavailable: {e}")
+        st.warning(
+            "API is waking up (Render free tier sleeps after 15 min of inactivity). "
+            "Wait 30 seconds and click **🔄 Refresh**."
+        )
+        st.caption(f"Detail: {e}")
         st.stop()
 
 # Aggregate index across all COICOP groups for chart 1 (simple mean)
