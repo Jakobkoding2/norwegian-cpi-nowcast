@@ -162,16 +162,33 @@ if nowcast:
 
     target = pd.to_datetime(nowcast["target_month"])
     ssb_release = target + pd.DateOffset(days=10)
+
+    last_val = agg_daily["index_value"].iloc[-1] if not agg_daily.empty else 100
+    last_date = agg_daily["price_date"].max() if not agg_daily.empty else target
+    # Project index forward using the MoM% nowcast
+    projected = last_val * (1 + nowcast["point_estimate"] / 100)
+    ci_lo_val = last_val * (1 + nowcast["ci_lower_95"] / 100)
+    ci_hi_val = last_val * (1 + nowcast["ci_upper_95"] / 100)
+
+    # CI band (filled area between lo and hi at SSB release date)
     fig2.add_trace(
         go.Scatter(
-            x=[agg_daily["price_date"].max(), ssb_release, ssb_release],
-            y=[
-                agg_daily["index_value"].iloc[-1] if not agg_daily.empty else 100,
-                nowcast["point_estimate"] + 100,
-                nowcast["point_estimate"] + 100,
-            ],
+            x=[last_date, ssb_release, ssb_release, last_date],
+            y=[last_val, ci_hi_val, ci_lo_val, last_val],
+            fill="toself",
+            fillcolor="rgba(124,58,237,0.12)",
+            line=dict(color="rgba(0,0,0,0)"),
+            name="95% CI",
+            showlegend=True,
+        )
+    )
+    # Point estimate line
+    fig2.add_trace(
+        go.Scatter(
+            x=[last_date, ssb_release],
+            y=[last_val, projected],
             mode="lines",
-            name="Nowcast",
+            name=f"Nowcast {nowcast['point_estimate']:+.2f}%",
             line=dict(color="#7C3AED", dash="dash", width=2),
         )
     )
@@ -179,8 +196,9 @@ if nowcast:
         x0=str(target),
         x1=str(ssb_release),
         fillcolor="#7C3AED",
-        opacity=0.08,
-        annotation_text=f"Prediction: {nowcast['point_estimate']:+.2f}%",
+        opacity=0.05,
+        annotation_text=f"SSB publishes ~{ssb_release.strftime('%b %d')}",
+        annotation_position="top left",
     )
     fig2.update_layout(height=340, margin=dict(t=20, b=0))
     st.plotly_chart(fig2, use_container_width=True)
@@ -191,7 +209,7 @@ else:
 # ── Chart 3: COICOP Breakdown ─────────────────────────────────────────────────
 
 st.subheader(f"COICOP Breakdown — {breakdown_date}")
-if not breakdown_df.empty:
+if not breakdown_df.empty and breakdown_df["mom_pct"].notna().any():
     breakdown_df = breakdown_df.sort_values("mom_pct", ascending=True)
     fig3 = go.Figure(
         go.Bar(
@@ -211,6 +229,8 @@ if not breakdown_df.empty:
         margin=dict(t=10, b=0),
     )
     st.plotly_chart(fig3, use_container_width=True)
+elif not breakdown_df.empty:
+    st.info("MoM breakdown needs at least two days of price data — check back tomorrow.")
 else:
     st.info("No breakdown data for today. Run the scraper and indexer first.")
 
