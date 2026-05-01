@@ -2,7 +2,7 @@
 import pandas as pd
 import pytest
 
-from indexer.promo_filter import clean, effective_price, rolling_median_smooth
+from indexer.promo_filter import clean, effective_price, modal_smooth
 
 
 def _make_df(rows):
@@ -21,25 +21,40 @@ def test_effective_price_uses_regular_when_no_promo():
     assert out["effective_price"].iloc[0] == 100.0
 
 
-def test_rolling_median_window():
+def test_modal_smooth_absorbs_flash_sale():
+    # Product priced at 39.90 every day except one flash-sale day at 19.90.
+    # Modal price over the window should be 39.90, not 19.90.
     rows = [
-        {"ean": "A", "price": float(p), "is_promo": False, "promo_price": None, "price_date": f"2026-01-{i+1:02d}"}
-        for i, p in enumerate([10, 12, 11, 200, 11, 12, 10])  # 200 is a flash-sale spike
+        {"ean": "A", "price": 39.90 if i != 3 else 19.90, "is_promo": False, "promo_price": None,
+         "price_date": f"2026-01-{i+1:02d}"}
+        for i in range(7)
     ]
     df = _make_df(rows)
     out = clean(df)
-    # After median smoothing the spike should be dampened
-    spike_idx = out[out["price"].apply(lambda x: x == 200)].index
-    if not spike_idx.empty:
-        smoothed_spike = out.loc[spike_idx[0], "smoothed_price"]
-        assert smoothed_spike < 200, "Flash-sale spike should be smoothed"
+    # The modal smoothed price for the flash-sale day should be 39.90
+    spike_row = out[out["price"] == 19.90]
+    if not spike_row.empty:
+        assert spike_row["smoothed_price"].iloc[0] == pytest.approx(39.90), (
+            "Modal smooth should return 39.90 (the dominant price)"
+        )
+
+
+def test_modal_smooth_sustained_promo_not_absorbed():
+    # If a price genuinely drops for many days, the mode shifts too.
+    # 5 days at 29.90, then 2 days at 19.90 → mode = 29.90 still for last row.
+    rows = [
+        {"ean": "A", "price": 29.90 if i < 5 else 19.90, "is_promo": False, "promo_price": None,
+         "price_date": f"2026-01-{i+1:02d}"}
+        for i in range(7)
+    ]
+    df = _make_df(rows)
+    out = clean(df)
+    # Last two rows have 2× 19.90 vs 5× 29.90 in window → mode is still 29.90
+    assert out["smoothed_price"].iloc[-1] == pytest.approx(29.90)
 
 
 def test_laspeyres_index_value():
     """Smoke test: a basket where all prices equal base => index should be 100."""
-    import pandas as pd
-    from indexer.promo_filter import clean
-
     rows = [
         {
             "ean": f"EAN{i}",

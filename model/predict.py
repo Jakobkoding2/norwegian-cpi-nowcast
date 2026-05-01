@@ -29,6 +29,8 @@ FEATURE_COLS = [
     "eur_nok_mom_pct",
     "promo_intensity",
     "volatility_mean",
+    "is_feb_window",
+    "is_jul_window",
 ]
 BOOTSTRAP_ROUNDS = 1000
 
