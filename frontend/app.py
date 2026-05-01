@@ -26,8 +26,15 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("Norwegian Food CPI Nowcasting Engine")
-st.caption("Real-time Laspeyres index from grocery retailers vs SSB official releases")
+col_title, col_btn = st.columns([5, 1])
+with col_title:
+    st.title("Norwegian Food CPI Nowcasting Engine")
+    st.caption("Real-time Laspeyres index from grocery retailers vs SSB official releases")
+with col_btn:
+    st.write("")
+    if st.button("🔄 Refresh", help="Clear cache and reload data"):
+        st.cache_data.clear()
+        st.rerun()
 
 
 # ── Data fetchers (cached 30 min) ─────────────────────────────────────────────
