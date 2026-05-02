@@ -12,6 +12,16 @@ Real-time Norwegian food CPI tracker and SSB monthly print predictor. Scrapes da
 
 ---
 
+## Dashboard
+
+![Daily Smoothed Index vs SSB Official](docs/screenshot/daily%20smoothed%20index.png)
+
+![Historical Nowcast vs SSB Actual](docs/screenshot/Hisotrical_nowcast.png)
+
+![COICOP Category Breakdown](docs/screenshot/COICOP%20category.png)
+
+---
+
 ## Architecture
 
 ```mermaid
