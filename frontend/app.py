@@ -104,21 +104,60 @@ if not daily_df.empty:
 else:
     agg_daily = pd.DataFrame(columns=["price_date", "index_value"])
 
+# Build SSB-chained historical index anchored to our first real observation.
+# Chain formula: index_M = index_{M-1} × (1 + mom_M/100)
+# Going backwards: index_{M-1} = index_M / (1 + mom_M/100)
+ssb_chained = pd.DataFrame()
+if not ssb_df.empty:
+    chain = ssb_df[["reference_month", "mom_pct"]].dropna().sort_values("reference_month").reset_index(drop=True).copy()
+    # Anchor value: mean of our real daily observations (or 100 if none yet)
+    anchor_val = float(agg_daily["index_value"].mean()) if not agg_daily.empty else 100.0
+    anchor_ts = (
+        pd.Timestamp(agg_daily["price_date"].min()).to_period("M").to_timestamp()
+        if not agg_daily.empty else chain["reference_month"].iloc[-1]
+    )
+    chain["index_val"] = float("nan")
+    before_mask = chain["reference_month"] <= anchor_ts
+    if before_mask.any():
+        ap = int(chain[before_mask].index[-1])
+        chain.at[ap, "index_val"] = anchor_val
+        # Forward chain
+        for i in range(ap + 1, len(chain)):
+            chain.at[i, "index_val"] = chain.at[i - 1, "index_val"] * (1 + chain.at[i, "mom_pct"] / 100)
+        # Backward chain
+        for i in range(ap - 1, -1, -1):
+            chain.at[i, "index_val"] = chain.at[i + 1, "index_val"] / (1 + chain.at[i + 1, "mom_pct"] / 100)
+        ssb_chained = chain[["reference_month", "index_val"]].dropna()
+
 
 # ── Chart 1: Daily Index vs SSB Prints ────────────────────────────────────────
 
 st.subheader("Daily Smoothed Index vs SSB Official")
 fig1 = go.Figure()
 
+# SSB-chained historical index (background reference line)
+if not ssb_chained.empty:
+    fig1.add_trace(
+        go.Scatter(
+            x=ssb_chained["reference_month"],
+            y=ssb_chained["index_val"],
+            mode="lines",
+            name="SSB-chained Index (historical)",
+            line=dict(color="#2563EB", width=2, dash="dot"),
+            opacity=0.6,
+        )
+    )
+
+# Real daily index (solid, on top)
 if not agg_daily.empty:
     fig1.add_trace(
         go.Scatter(
             x=agg_daily["price_date"],
             y=agg_daily["index_value"],
             mode="lines+markers",
-            name="Daily Index (smoothed)",
-            line=dict(color="#2563EB", width=2),
-            marker=dict(size=5),
+            name="Daily Index (live)",
+            line=dict(color="#2563EB", width=3),
+            marker=dict(size=6),
         )
     )
 
