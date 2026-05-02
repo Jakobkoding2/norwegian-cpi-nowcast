@@ -18,7 +18,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import os
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
 import asyncpg
@@ -67,7 +67,8 @@ async def export(output: str, from_month: str) -> None:
 
     # ── SSB actuals ──────────────────────────────────────────────────────────
     ssb_rows = await pool.fetch(
-        "SELECT reference_month, mom_pct FROM ssb_official WHERE reference_month >= $1 ORDER BY reference_month",
+        "SELECT reference_month, mom_pct FROM ssb_official "
+        "WHERE reference_month >= $1 ORDER BY reference_month",
         date.fromisoformat(from_month + "-01"),
     )
     ssb_df = pd.DataFrame([dict(r) for r in ssb_rows])
@@ -90,7 +91,9 @@ async def export(output: str, from_month: str) -> None:
     if not idx_df.empty:
         idx_df["price_date"] = pd.to_datetime(idx_df["price_date"])
         idx_df["mom_pct"] = idx_df["mom_pct"].apply(lambda v: float(v) if v is not None else None)
-        idx_df["raw_volatility"] = idx_df["raw_volatility"].apply(lambda v: float(v) if v is not None else None)
+        idx_df["raw_volatility"] = idx_df["raw_volatility"].apply(
+            lambda v: float(v) if v is not None else None
+        )
         idx_df["month"] = idx_df["price_date"].dt.to_period("M").dt.to_timestamp()
         # Restrict to first 21 days
         idx_df = idx_df[idx_df["price_date"].dt.day <= 21]
@@ -156,7 +159,7 @@ async def export(output: str, from_month: str) -> None:
     print(f"\nExported {len(result)} rows -> {output}")
     print(f"  Rows with internal index data : {result['internal_mom_pct'].notna().sum()}")
     print(f"  Rows with EUR/NOK data        : {result['eur_nok_mom_pct'].notna().sum()}")
-    print(f"\nLast 6 rows:")
+    print("\nLast 6 rows:")
     print(result.tail(6).to_string(index=False))
 
 
