@@ -115,9 +115,10 @@ if not agg_daily.empty:
         go.Scatter(
             x=agg_daily["price_date"],
             y=agg_daily["index_value"],
-            mode="lines",
+            mode="lines+markers",
             name="Daily Index (smoothed)",
             line=dict(color="#2563EB", width=2),
+            marker=dict(size=5),
         )
     )
 
@@ -134,8 +135,15 @@ if not ssb_df.empty:
     )
 
 fig1.update_layout(
-    yaxis=dict(title="Index (base=100)"),
-    yaxis2=dict(title="MoM % Change", overlaying="y", side="right", showgrid=False),
+    yaxis=dict(title="Index (Jan 2026 = 100)", rangemode="tozero" if agg_daily.empty else "normal"),
+    yaxis2=dict(
+        title="SSB MoM % Change",
+        overlaying="y",
+        side="right",
+        showgrid=False,
+        zeroline=True,
+        zerolinecolor="rgba(255,255,255,0.2)",
+    ),
     legend=dict(orientation="h", yanchor="bottom", y=1.02),
     height=380,
     margin=dict(t=30, b=0),
