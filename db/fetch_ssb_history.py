@@ -51,7 +51,6 @@ def _parse_jsonstat(data: dict) -> list[dict]:
 
     values = data.get("value", [])
     n_times = len(time_labels)
-    n_stats = len(stat_ids)
 
     # JSON-stat2 layout: values are in row-major order over [ContentsCode, Tid]
     mom_idx = stat_ids.index("Manedsendring") if "Manedsendring" in stat_ids else None

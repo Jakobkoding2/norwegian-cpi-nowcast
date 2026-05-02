@@ -20,24 +20,49 @@ DATABASE_URL = os.environ["DATABASE_URL"]
 
 # Products to deactivate (EAN → reason)
 DEACTIVATE = {
-    "7035620054948": "Hatting Loff 750g — not in Kassal; replaced by Coop Toastloff",
-    "7622210951106": "Kjeldsberg Havreflak 750g — product doesn't exist; replaced by Änglamark Müsli",
-    "7033085041699": "Nortura Kyllingfilet 700g — duplicate Kassal EAN of Coop Kyllingfilet; replaced by Prior Hel Kylling",
-    "7033085023718": "Nortura Svinekam 1kg — not in Kassal; replaced by Sardiner Ramirez slot",
-    "7311040802001": "Abba Sardiner 125g — not in Kassal; replaced by Sardiner Ramirez",
-    "2000000000015": "Eple Kg — loose-produce EAN, never resolvable; replaced by Epler 1kg First Price",
-    "2000000000084": "Gulrøtter 750g — loose-produce EAN, duplicate of Gulrot 750g Beger",
-    "7040510605285": "Strøsukker 1kg — not in Kassal; already have 2 sugar products",
+    "7035620054948": (
+        "Hatting Loff 750g — not in Kassal; replaced by Coop Toastloff"
+    ),
+    "7622210951106": (
+        "Kjeldsberg Havreflak 750g — product doesn't exist; "
+        "replaced by Änglamark Müsli"
+    ),
+    "7033085041699": (
+        "Nortura Kyllingfilet 700g — duplicate Kassal EAN of Coop Kyllingfilet; "
+        "replaced by Prior Hel Kylling"
+    ),
+    "7033085023718": (
+        "Nortura Svinekam 1kg — not in Kassal; replaced by Sardiner Ramirez slot"
+    ),
+    "7311040802001": (
+        "Abba Sardiner 125g — not in Kassal; replaced by Sardiner Ramirez"
+    ),
+    "2000000000015": (
+        "Eple Kg — loose-produce EAN, never resolvable; "
+        "replaced by Epler 1kg First Price"
+    ),
+    "2000000000084": (
+        "Gulrøtter 750g — loose-produce EAN, duplicate of Gulrot 750g Beger"
+    ),
+    "7040510605285": (
+        "Strøsukker 1kg — not in Kassal; already have 2 sugar products"
+    ),
 }
 
-# New products to insert (ean, name, store_chain, coicop_code, coicop_label, weight, base_price_p0)
+# New products to insert
+# (ean, name, store_chain, coicop_code, coicop_label, weight, base_price_p0)
 # base_price_p0 = current Kassal price (May 2026); MoM will accumulate from here.
 ADD = [
-    ("7025165010827", "Coop Skåret Toastloff 750g",           "kassal", "01.1.1", "Bread and cereals",      3.50, 36.90),
-    ("7340191114173", "Änglamark Fruktmüsli 500g",            "kassal", "01.1.1", "Bread and cereals",      1.50, 59.90),
-    ("7039610004378", "Prior Hel Kylling Grillet 700g",        "kassal", "01.1.2", "Meat",                   4.50, 99.90),
-    ("5601010211070", "Sardiner Naturell 125g Ramirez",        "kassal", "01.1.3", "Fish and seafood",       1.00, 37.50),
-    ("5903240405190", "Epler 1kg First Price",                 "kassal", "01.1.6", "Fruit",                  2.00, 19.90),
+    ("7025165010827", "Coop Skåret Toastloff 750g", "kassal", "01.1.1",
+     "Bread and cereals", 3.50, 36.90),
+    ("7340191114173", "Änglamark Fruktmüsli 500g", "kassal", "01.1.1",
+     "Bread and cereals", 1.50, 59.90),
+    ("7039610004378", "Prior Hel Kylling Grillet 700g", "kassal", "01.1.2",
+     "Meat", 4.50, 99.90),
+    ("5601010211070", "Sardiner Naturell 125g Ramirez", "kassal", "01.1.3",
+     "Fish and seafood", 1.00, 37.50),
+    ("5903240405190", "Epler 1kg First Price", "kassal", "01.1.6",
+     "Fruit", 2.00, 19.90),
 ]
 
 # Name correction for Friele (EAN and COICOP stay the same)
@@ -59,8 +84,9 @@ async def main() -> None:
     # Insert replacements (skip if EAN already present)
     for row in ADD:
         result = await pool.execute(
-            """
-            INSERT INTO products (ean, name, store_chain, coicop_code, coicop_label, ssb_weight_2026, base_price_p0)
+            """INSERT INTO products
+                (ean, name, store_chain, coicop_code, coicop_label,
+                 ssb_weight_2026, base_price_p0)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             ON CONFLICT (ean) DO UPDATE SET active = TRUE, name = EXCLUDED.name
             """,

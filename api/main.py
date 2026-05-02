@@ -83,7 +83,8 @@ async def get_daily_index(
         where += " AND coicop_code = $3"
         params.append(coicop_code)
     rows = await db().fetch(
-        f"SELECT price_date, coicop_code, index_value, mom_pct FROM daily_index {where} ORDER BY price_date DESC",
+        f"SELECT price_date, coicop_code, index_value, mom_pct FROM daily_index {where} "
+        "ORDER BY price_date DESC",
         *params,
     )
     return [dict(r) for r in rows]
@@ -105,7 +106,8 @@ async def get_ssb_history(
     from_date: date = Query(default=date(2024, 1, 1)),
 ):
     rows = await db().fetch(
-        "SELECT reference_month, mom_pct, yoy_pct FROM ssb_official WHERE reference_month >= $1 ORDER BY reference_month",
+        "SELECT reference_month, mom_pct, yoy_pct FROM ssb_official "
+        "WHERE reference_month >= $1 ORDER BY reference_month",
         from_date,
     )
     return [dict(r) for r in rows]
@@ -114,7 +116,8 @@ async def get_ssb_history(
 @app.get("/breakdown/{price_date}", response_model=list[CoicopBreakdown])
 async def get_coicop_breakdown(price_date: date):
     rows = await db().fetch(
-        "SELECT coicop_code, index_value, mom_pct, n_products FROM daily_index WHERE price_date = $1 ORDER BY coicop_code",
+        "SELECT coicop_code, index_value, mom_pct, n_products FROM daily_index "
+        "WHERE price_date = $1 ORDER BY coicop_code",
         price_date,
     )
     if not rows:
