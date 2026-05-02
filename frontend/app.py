@@ -213,28 +213,39 @@ else:
 # ── Chart 3: COICOP Breakdown ─────────────────────────────────────────────────
 
 st.subheader(f"COICOP Breakdown — {breakdown_date}")
-if not breakdown_df.empty and breakdown_df["mom_pct"].notna().any():
-    breakdown_df = breakdown_df.sort_values("mom_pct", ascending=True)
+if not breakdown_df.empty:
+    has_mom = breakdown_df["mom_pct"].notna().any()
+    if has_mom:
+        plot_col = "mom_pct"
+        x_title = "MoM % Change"
+        bar_label = breakdown_df["mom_pct"].apply(lambda v: f"{v:+.2f}%" if pd.notna(v) else "N/A")
+        bar_colors = ["#DC2626" if v > 0 else "#16A34A" for v in breakdown_df["mom_pct"].fillna(0)]
+        breakdown_df = breakdown_df.sort_values("mom_pct", ascending=True)
+    else:
+        # No MoM yet (< 30 days of history) — show absolute index vs Jan 2026 base
+        plot_col = "index_value"
+        x_title = "Index (Jan 2026 = 100)"
+        bar_label = breakdown_df["index_value"].apply(lambda v: f"{v:.1f}" if pd.notna(v) else "N/A")
+        bar_colors = ["#DC2626" if v > 100 else "#16A34A" for v in breakdown_df["index_value"].fillna(100)]
+        breakdown_df = breakdown_df.sort_values("index_value", ascending=True)
+        st.caption("ℹ️ MoM % will appear once 30 days of price history are collected. Showing index level vs January 2026 base (100) for now.")
+
     fig3 = go.Figure(
         go.Bar(
-            x=breakdown_df["mom_pct"],
+            x=breakdown_df[plot_col],
             y=breakdown_df["coicop_code"],
             orientation="h",
-            marker_color=[
-                "#DC2626" if v > 0 else "#16A34A" for v in breakdown_df["mom_pct"].fillna(0)
-            ],
-            text=breakdown_df["mom_pct"].apply(lambda v: f"{v:+.2f}%" if pd.notna(v) else "N/A"),
+            marker_color=bar_colors,
+            text=bar_label,
             textposition="outside",
         )
     )
     fig3.update_layout(
-        xaxis_title="MoM % Change",
+        xaxis_title=x_title,
         height=max(250, len(breakdown_df) * 40),
         margin=dict(t=10, b=0),
     )
     st.plotly_chart(fig3, use_container_width=True)
-elif not breakdown_df.empty:
-    st.info("MoM breakdown needs at least two days of price data — check back tomorrow.")
 else:
     st.info("No breakdown data for today. Run the scraper and indexer first.")
 
