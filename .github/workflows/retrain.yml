@@ -43,6 +43,11 @@ jobs:
           path: model/artifacts/xgb_latest.json
           retention-days: 90
 
+      - name: Backfill historical predictions with new model
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python -m model.backfill_predictions --from 2020-01
+
       - name: Commit updated model
         run: |
           git config user.name "github-actions[bot]"

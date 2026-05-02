@@ -24,7 +24,7 @@ async def close_pool() -> None:
 
 async def fetch_active_products() -> list[dict]:
     pool = await get_pool()
-    rows = await pool.fetch("SELECT ean, name FROM products WHERE active = TRUE")
+    rows = await pool.fetch("SELECT ean, name, base_price_p0 FROM products WHERE active = TRUE")
     return [dict(r) for r in rows]
 
 

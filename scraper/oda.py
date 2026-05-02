@@ -61,18 +61,32 @@ async def fetch_prices_batch(products: list[dict]) -> list[dict]:
     async def fetch_one(session: AsyncSession, product: dict) -> None:
         db_ean: str = product["ean"]
         name: str = product["name"]
+        base_price: float | None = product.get("base_price_p0")
         async with sem:
             try:
                 hits = await _search_oda(session, name)
                 hit = next((p for p in hits if p.get("gross_price") is not None), None)
                 if hit is None:
                     return
+                price = float(hit["gross_price"])
+                # Sanity check: Oda name-matches can land on a larger/premium variant.
+                # If price is more than 1.6× the January base, it's almost certainly
+                # a wrong-size match — skip it rather than pollute the index.
+                if base_price and price > base_price * 1.6:
+                    log.warning(
+                        "oda_price_sanity_fail",
+                        name=name,
+                        price=price,
+                        base=base_price,
+                        ratio=round(price / base_price, 2),
+                    )
+                    return
                 discount = hit.get("discount") or hit.get("promotion")
                 results.append(
                     {
                         "ean": db_ean,
                         "price_date": today,
-                        "price": float(hit["gross_price"]),
+                        "price": price,
                         "is_promo": bool(discount),
                         "promo_price": float(discount["price"]) if discount and "price" in discount else None,
                         "source": "oda_api",
