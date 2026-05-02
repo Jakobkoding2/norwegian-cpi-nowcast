@@ -122,6 +122,25 @@ async def get_coicop_breakdown(price_date: date):
     return [dict(r) for r in rows]
 
 
+@app.get("/nowcast/history", response_model=list[NowcastResponse])
+async def get_nowcast_history(
+    from_date: date = Query(default=date(2020, 1, 1)),
+):
+    """All historical nowcast predictions (backfill + live), one per target month."""
+    rows = await db().fetch(
+        """
+        SELECT DISTINCT ON (target_month)
+            run_date, target_month, point_estimate, ci_lower_95, ci_upper_95,
+            model_version AS xgb_version
+        FROM nowcast
+        WHERE target_month >= $1
+        ORDER BY target_month, run_date DESC
+        """,
+        from_date,
+    )
+    return [dict(r) for r in rows]
+
+
 @app.get("/health")
 async def health():
     await db().fetchval("SELECT 1")

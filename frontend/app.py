@@ -77,6 +77,18 @@ def fetch_breakdown(price_date: str) -> pd.DataFrame:
     return pd.DataFrame(r.json())
 
 
+@st.cache_data(ttl=1800)
+def fetch_nowcast_history(from_date: str) -> pd.DataFrame:
+    r = requests.get(f"{API_URL}/nowcast/history", params={"from_date": from_date}, timeout=45)
+    if r.status_code == 404:
+        return pd.DataFrame()
+    r.raise_for_status()
+    df = pd.DataFrame(r.json())
+    if not df.empty:
+        df["target_month"] = pd.to_datetime(df["target_month"])
+    return df
+
+
 # ── Load data ─────────────────────────────────────────────────────────────────
 
 from_date = str(date.today() - timedelta(days=365))
@@ -88,6 +100,7 @@ with st.spinner("Loading data…"):
         nowcast = fetch_nowcast()
         breakdown_date = str(date.today())
         breakdown_df = fetch_breakdown(breakdown_date)
+        nowcast_history_df = fetch_nowcast_history("2020-01-01")
     except Exception as e:
         st.warning(
             "API is waking up (Render free tier sleeps after 15 min of inactivity). "
@@ -257,9 +270,86 @@ else:
     st.info("No nowcast available yet. Run `python -m model.predict` after training the model.")
 
 
-# ── Chart 3: COICOP Breakdown ─────────────────────────────────────────────────
+# ── Chart 3: Historical Nowcast vs Actual ─────────────────────────────────────
 
-st.subheader(f"COICOP Breakdown — {breakdown_date}")
+st.subheader("Historical Nowcast vs SSB Actual (Predicted MoM %)")
+
+if not nowcast_history_df.empty and not ssb_df.empty:
+    # Merge predictions with SSB actuals on month
+    hist = nowcast_history_df.copy()
+    ssb_hist = ssb_df[["reference_month", "mom_pct"]].copy()
+    ssb_hist = ssb_hist.rename(columns={"reference_month": "target_month", "mom_pct": "actual_mom"})
+    merged = hist.merge(ssb_hist, on="target_month", how="inner").sort_values("target_month")
+
+    if not merged.empty:
+        mae = (merged["point_estimate"] - merged["actual_mom"]).abs().mean()
+        naive_mae = merged["actual_mom"].diff().abs().mean()
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Nowcast MAE", f"{mae:.2f} pp", help="Mean Absolute Error vs SSB actuals")
+        col2.metric("Naive MAE (persist)", f"{naive_mae:.2f} pp", help="Benchmark: repeat last month's print")
+        col3.metric("Months tracked", f"{len(merged)}")
+
+        fig_hist = go.Figure()
+
+        # CI band
+        fig_hist.add_trace(
+            go.Scatter(
+                x=list(merged["target_month"]) + list(merged["target_month"])[::-1],
+                y=list(merged["ci_upper_95"]) + list(merged["ci_lower_95"])[::-1],
+                fill="toself",
+                fillcolor="rgba(124,58,237,0.10)",
+                line=dict(color="rgba(0,0,0,0)"),
+                name="95% CI",
+                showlegend=True,
+            )
+        )
+
+        # SSB actual line
+        fig_hist.add_trace(
+            go.Scatter(
+                x=merged["target_month"],
+                y=merged["actual_mom"],
+                mode="lines+markers",
+                name="SSB Actual MoM %",
+                line=dict(color="#DC2626", width=2),
+                marker=dict(size=5),
+            )
+        )
+
+        # Nowcast prediction line
+        fig_hist.add_trace(
+            go.Scatter(
+                x=merged["target_month"],
+                y=merged["point_estimate"],
+                mode="lines+markers",
+                name="Nowcast Prediction",
+                line=dict(color="#7C3AED", width=2, dash="dash"),
+                marker=dict(size=5),
+            )
+        )
+
+        fig_hist.update_layout(
+            yaxis=dict(title="MoM % Change", zeroline=True),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02),
+            height=380,
+            margin=dict(t=30, b=0),
+        )
+        st.plotly_chart(fig_hist, use_container_width=True)
+        st.caption(
+            f"Backtest on {len(merged)} months (2020–present). "
+            f"XGBoost MAE: **{mae:.2f} pp** vs naive baseline: **{naive_mae:.2f} pp**. "
+            "Predictions use only data available before SSB publishes (~10th of following month)."
+        )
+    else:
+        st.info("No overlapping months between predictions and SSB actuals yet.")
+else:
+    st.info("Historical predictions not available yet.")
+
+
+# ── Chart 4: COICOP Breakdown ─────────────────────────────────────────────────
+
+st.subheader(f"COICOP Category Breakdown — {breakdown_date}")
 if not breakdown_df.empty:
     has_mom = breakdown_df["mom_pct"].notna().any()
     if has_mom:
