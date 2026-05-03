@@ -1,0 +1,230 @@
+name: Daily Light Maintenance
+
+on:
+  schedule:
+    - cron: '0 3 * * *'   # Kjører kl 03:00 UTC hver dag
+  workflow_dispatch:        # Kan også kjøres manuelt
+
+permissions:
+  contents: write
+
+jobs:
+  maintain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gather repo context
+        id: context
+        run: |
+          # Samle fil-liste og README
+          echo "FILE_LIST<<EOF" >> $GITHUB_OUTPUT
+          find . -type f \( -name "*.py" -o -name "*.js" -o -name "*.ts" -o -name "*.md" \) \
+            ! -path "./.git/*" ! -path "./node_modules/*" ! -path "./.venv/*" \
+            | head -40 >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          # README innhold (maks 3000 tegn)
+          if [ -f README.md ]; then
+            echo "README<<EOF" >> $GITHUB_OUTPUT
+            head -c 3000 README.md >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "README=ingen README funnet" >> $GITHUB_OUTPUT
+          fi
+
+          # Hent siste commits for kontekst
+          echo "RECENT_COMMITS<<EOF" >> $GITHUB_OUTPUT
+          git log --oneline -10 >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Read source files
+        id: source
+        run: |
+          # Les innholdet av de viktigste kodefilene (maks 6000 tegn totalt)
+          SOURCE=""
+          CHARS=0
+          MAX=6000
+
+          while IFS= read -r file; do
+            if [ -f "$file" ]; then
+              CONTENT=$(cat "$file" 2>/dev/null | head -c 1000)
+              NEW_CHARS=${#CONTENT}
+              CHARS=$((CHARS + NEW_CHARS))
+              if [ $CHARS -lt $MAX ]; then
+                SOURCE="$SOURCE\n\n### $file\n$CONTENT"
+              fi
+            fi
+          done <<< "${{ steps.context.outputs.FILE_LIST }}"
+
+          echo "SOURCE<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$SOURCE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Call OpenRouter AI
+        id: ai
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          REPO_NAME: ${{ github.repository }}
+        run: |
+          PROMPT="Du er en senior utvikler som vedlikeholder GitHub-repoet '$REPO_NAME'.
+
+          ## Filer i repoet:
+          ${{ steps.context.outputs.FILE_LIST }}
+
+          ## Siste commits:
+          ${{ steps.context.outputs.RECENT_COMMITS }}
+
+          ## README:
+          ${{ steps.context.outputs.README }}
+
+          ## Kildekode (utdrag):
+          ${{ steps.source.outputs.SOURCE }}
+
+          ## Din oppgave (daglig lett vedlikehold):
+          1. Forbedre README.md hvis den er uklar, mangelfull eller utdatert
+          2. Legg til/fiks inline kommentarer i koden der det mangler
+          3. Fiks åpenbare små bugs (typos i strenger, manglende imports, etc.)
+          4. IKKE gjør store refaktoreringer — kun trygge, små forbedringer
+
+          ## Svar ALLTID i dette eksakte JSON-formatet:
+          {
+            \"changes\": [
+              {
+                \"file\": \"relativ/sti/til/fil.md\",
+                \"content\": \"HELE filinnholdet her, ikke bare endringene\",
+                \"reason\": \"Kort forklaring på hva og hvorfor\"
+              }
+            ],
+            \"summary\": \"En setning som oppsummerer hva som ble gjort\",
+            \"skipped\": \"Beskriv hva du ikke endret og hvorfor\"
+          }
+
+          Hvis ingen endringer er nødvendige, svar med tom changes-liste og forklar i summary."
+
+          # Kall OpenRouter API
+          RESPONSE=$(curl -s -X POST "https://openrouter.ai/api/v1/chat/completions" \
+            -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -H "HTTP-Referer: https://github.com/$REPO_NAME" \
+            -d "{
+              \"model\": \"moonshotai/kimi-k2.6\",
+              \"max_tokens\": 4000,
+              \"temperature\": 0.2,
+              \"messages\": [{
+                \"role\": \"user\",
+                \"content\": $(echo "$PROMPT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
+              }]
+            }")
+
+          # Lagre rå respons for debugging
+          echo "$RESPONSE" > /tmp/ai_response.json
+
+          # Ekstraher content-feltet
+          AI_CONTENT=$(echo "$RESPONSE" | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          if 'choices' in data and len(data['choices']) > 0:
+              print(data['choices'][0]['message']['content'])
+          else:
+              print('{\"changes\": [], \"summary\": \"API feil: ' + str(data.get('error', 'ukjent')) + '\"}')
+          ")
+
+          echo "AI_CONTENT<<EOF" >> $GITHUB_OUTPUT
+          echo "$AI_CONTENT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Apply AI changes
+        id: apply
+        run: |
+          AI_OUTPUT='${{ steps.ai.outputs.AI_CONTENT }}'
+
+          # Parse JSON og skriv filer
+          python3 << 'PYEOF'
+          import json, os, sys
+
+          raw = os.environ.get('AI_OUTPUT', '')
+
+          # Finn JSON-blokken (AI kan pakke den i ```json ... ```)
+          import re
+          match = re.search(r'\{.*\}', raw, re.DOTALL)
+          if not match:
+              print("Ingen JSON funnet i AI-respons")
+              sys.exit(0)
+
+          try:
+              data = json.loads(match.group())
+          except json.JSONDecodeError as e:
+              print(f"JSON parse feil: {e}")
+              sys.exit(0)
+
+          changes = data.get('changes', [])
+          summary = data.get('summary', 'Ingen endringer')
+
+          print(f"AI summary: {summary}")
+          print(f"Antall endringer: {len(changes)}")
+
+          changed_files = []
+          for change in changes:
+              filepath = change.get('file', '').lstrip('./')
+              content = change.get('content', '')
+              reason = change.get('reason', '')
+
+              if not filepath or not content:
+                  continue
+
+              # Sikkerhet: ikke skriv utenfor repoet
+              if '..' in filepath or filepath.startswith('/'):
+                  print(f"Skipping unsafe path: {filepath}")
+                  continue
+
+              # Lag mapper hvis nødvendig
+              os.makedirs(os.path.dirname(filepath) if '/' in filepath else '.', exist_ok=True)
+
+              with open(filepath, 'w') as f:
+                  f.write(content)
+
+              print(f"Skrev: {filepath} — {reason}")
+              changed_files.append(filepath)
+
+          # Skriv summary til fil for commit-melding
+          with open('/tmp/ai_summary.txt', 'w') as f:
+              f.write(summary)
+
+          with open('/tmp/changed_files.txt', 'w') as f:
+              f.write('\n'.join(changed_files))
+
+          PYEOF
+        env:
+          AI_OUTPUT: ${{ steps.ai.outputs.AI_CONTENT }}
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "AI Maintenance Bot"
+          git config user.email "ai-bot@users.noreply.github.com"
+
+          # Sjekk om noe faktisk er endret
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "Ingen endringer å committe"
+            exit 0
+          fi
+
+          SUMMARY=$(cat /tmp/ai_summary.txt 2>/dev/null || echo "Daglig vedlikehold")
+          CHANGED=$(cat /tmp/changed_files.txt 2>/dev/null || echo "")
+
+          git add -A
+
+          git commit -m "🤖 [daglig] $SUMMARY
+
+          Endrede filer:
+          $CHANGED
+
+          Kjørt av: GitHub Actions / OpenRouter AI
+          Modell: moonshotai/kimi-k2.6"
+
+          git push origin main
