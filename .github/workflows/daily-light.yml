@@ -227,4 +227,4 @@ jobs:
           Kjørt av: GitHub Actions / OpenRouter AI
           Modell: moonshotai/kimi-k2.6"
 
-          git push origin main
+          git push origin master

@@ -9,6 +9,8 @@ Features (all available before SSB publishes on ~the 10th):
 """
 from __future__ import annotations
 
+from datetime import date
+
 import httpx
 import pandas as pd
 import structlog
@@ -42,12 +44,10 @@ async def fetch_eurnok(start: str, end: str) -> float | None:
 def build_feature_row(
     daily_index: pd.DataFrame,
     raw_prices: pd.DataFrame,
-    target_month: "date",  # type: ignore[name-defined]
+    target_month: date,
     eurnok_mom: float | None,
 ) -> dict:
     """Build a single feature dict for `target_month`."""
-    from datetime import date  # noqa: PLC0415
-
     month_start = target_month.replace(day=1)
     # Use data through day 21 (mimics SSB's collection window)
     cutoff = target_month.replace(day=21)
