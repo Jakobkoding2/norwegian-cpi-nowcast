@@ -6,9 +6,6 @@ Endpoint: https://platform-rest-prod.ngdata.no/api/products/10800/<store_id>/sea
 """
 from __future__ import annotations
 
-import asyncio
-from datetime import date
-
 import structlog
 from curl_cffi.requests import AsyncSession
 from tenacity import retry, stop_after_attempt, wait_exponential

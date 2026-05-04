@@ -12,6 +12,8 @@ Output rows are written to the daily_index table.
 """
 from __future__ import annotations
 
+from datetime import date
+
 import asyncpg
 import pandas as pd
 import structlog
@@ -19,8 +21,7 @@ import structlog
 log = structlog.get_logger(__name__)
 
 
-async def compute_and_store(pool: asyncpg.Pool, price_date: "date") -> None:  # type: ignore[name-defined]
-    from datetime import date  # noqa: PLC0415
+async def compute_and_store(pool: asyncpg.Pool, price_date: date) -> None:
 
     # Fetch 30-day price history — covers the modal smoothing window and provides
     # the source data for forward-filling products that missed today's scrape.

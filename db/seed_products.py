@@ -17,6 +17,7 @@ Base prices (base_price_p0) reflect January 2026 observed prices.
 Usage:
     python -m db.seed_products
 """
+# ruff: noqa: E501
 from __future__ import annotations
 
 import asyncio

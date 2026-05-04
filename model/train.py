@@ -9,10 +9,8 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import xgboost as xgb
 from sklearn.model_selection import TimeSeriesSplit, cross_val_score

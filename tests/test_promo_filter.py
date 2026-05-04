@@ -2,7 +2,7 @@
 import pandas as pd
 import pytest
 
-from indexer.promo_filter import clean, effective_price, modal_smooth
+from indexer.promo_filter import clean, effective_price
 
 
 def _make_df(rows):
